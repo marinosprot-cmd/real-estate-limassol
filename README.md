@@ -1,118 +1,95 @@
-# 🏠 Λεμεσός Ακίνητα • Limassol Properties
+# Limassol Prime Real Estate — Ιστοσελίδα Ακινήτων Λεμεσού
 
-> Μικρό, όμορφο και πλήρως λειτουργικό demo project για Real Estate στη Λεμεσό (Κύπρος).  
-> A small, beautiful and fully interactive Real Estate web demo for Limassol, Cyprus.
+Μοντέρνα, δίγλωσση (Ελληνικά / Αγγλικά) ιστοσελίδα για μεσιτικό γραφείο premium ακινήτων στη Λεμεσό, Κύπρος.
 
-**Τεχνολογίες / Tech:** Single-file HTML + Tailwind CSS (CDN) + Leaflet Maps (CDN) + Vanilla JavaScript  
-**Μέγεθος:** ~1 αρχείο (index.html) — τρέχει αμέσως σε browser χωρίς εγκατάσταση
+**Live Demo:** *(θα προστεθεί μετά το deployment στο Vercel)*
 
----
+## ✨ Χαρακτηριστικά
 
-## ✨ Χαρακτηριστικά / Features
+- **Πλήρως δίγλωσση** (Ελληνικά ↔ Αγγλικά) με εναλλαγή σε όλη την εφαρμογή
+- **Προηγμένα φίλτρα** αναζήτησης (τιμή, εμβαδόν, υπνοδωμάτια, περιοχή, τύπος)
+- **Διαδραστικός χάρτης** με Leaflet (συγχρονισμένος με τα φίλτρα)
+- **Λεπτομερείς κάρτες ακινήτων** με όλα τα επαγγελματικά στοιχεία
+- **Επαγγελματική φόρμα προσθήκης ακινήτου** με κυπριακά πεδία:
+  - Ενεργειακή κλάση (A+ έως G)
+  - Title Deed / Κατάσταση τίτλου
+  - ΦΠΑ (5% Πρώτη Κατοικία / 19%)
+  - Έπιπλα, θέα, προσανατολισμός, απόσταση από θάλασσα
+  - Στοιχεία μεσίτη
+- **Persistent storage** — τα ακίνητα που προσθέτεις αποθηκεύονται τοπικά
+- **Responsive** design (mobile-first)
+- **Modern tech stack**: Next.js 14 (App Router), TypeScript, Tailwind, Framer Motion, Sonner toasts
 
-- **Bilingual (Ελληνικά + English)** — Εναλλαγή γλώσσας με ένα κλικ (EL / EN)
-- **Προχωρημένα φίλτρα**:
-  - Αναζήτηση (τίτλος + περιγραφή)
-  - Τύπος ακινήτου (Βίλα / Διαμέρισμα / Μεζονέτα)
-  - Εύρος τιμής & εμβαδού (τ.μ.)
-  - Ελάχιστα υπνοδωμάτια
-  - Περιοχές (7 δημοφιλείς συνοικίες Λεμεσού)
-- **Διαδραστικός χάρτης** με Leaflet (OpenStreetMap) — markers με τιμές, popups με γρήγορη προβολή
-- **14 ρεαλιστικά mock ακίνητα** με τιμές, συντεταγμένες και περιγραφές βασισμένες στην πραγματική αγορά Λεμεσού (2025-2026)
-- **Modal λεπτομερειών** με πλήρη specs, χαρακτηριστικά και actions
-- **Προσθήκη νέου ακινήτου** (live προσθήκη στη λίστα — μόνο για τη συνεδρία)
-- **Responsive** — mobile, tablet, desktop
-- **Ωραίο design** με μεσογειακό στυλ (premium αίσθηση)
+## 🚀 Τεχνολογίες
 
-### Περιοχές που καλύπτονται
-- Γερμασόγεια (Germasogeia)
-- Άγιος Αθανάσιος (Agios Athanasios)
-- Μαρίνα Λεμεσού (Limassol Marina)
-- Άγιος Τύχωνας (Agios Tychonas)
-- Ζακάκι (Zakaki)
-- Μέσα Γειτονιά (Mesa Geitonia)
-- Κέντρο Λεμεσού (City Centre)
+- **Framework**: Next.js 14.2 + TypeScript
+- **Styling**: Tailwind CSS + custom design system
+- **Animations**: Framer Motion
+- **Maps**: Leaflet + React-Leaflet
+- **Notifications**: Sonner
+- **Icons**: Lucide React
 
----
+## 🛠️ Τοπική Ανάπτυξη
 
-## 🚀 Πώς να το τρέξετε / How to Run
+```bash
+# Clone το repository
+git clone <repository-url>
+cd limassol-real-estate-next
 
-1. Κατεβάστε ή κλωνοποιήστε τον φάκελο
-2. Ανοίξτε το αρχείο **`index.html`** απευθείας σε browser (double-click)
-3. Δεν χρειάζεται Node.js, npm, ή server!
+# Εγκατάσταση dependencies
+npm install
 
-**Γρήγορη εντολή (Windows PowerShell):**
-```powershell
-cd "C:\Users\User\Documents\GrokProjects\limassol-real-estate"
-start index.html
+# Εκκίνηση development server
+npm run dev
 ```
 
----
+Άνοιξε το [http://localhost:3000](http://localhost:3000) στον browser.
 
-## 🛠️ Προσαρμογή / Customization
+### Build για production
 
-### Αλλαγή / Προσθήκη Ακινήτων
-Ανοίξτε το `index.html` και βρείτε τον πίνακα `let properties = [...]` (γραμμή ~180).
-
-Κάθε ακίνητο έχει:
-```js
-{
-  id: 15,
-  title: { el: "Τίτλος", en: "Title" },
-  area: { el: "Γερμασόγεια", en: "Germasogeia" },
-  type: { el: "Βίλα", en: "Villa" },
-  price: 980000,
-  size: 210,
-  bedrooms: 3,
-  bathrooms: 3,
-  year: 2023,
-  lat: 34.72, lng: 33.08,        // Συντεταγμένες για τον χάρτη
-  image: "https://picsum.photos/id/1015/800/600",
-  description: { el: "...", en: "..." },
-  features: ["Πισίνα", "Sea View"]
-}
+```bash
+npm run build
+npm start
 ```
 
-### Αλλαγή Εικόνων
-- Χρησιμοποιεί `picsum.photos` (σταθερές εικόνες για demo)
-- Αντικαταστήστε το `image` με δικές σας URL ή local paths (`./images/villa1.jpg`)
+## 📁 Δομή Project
 
-### Χρώματα & Branding
-Αλλάξτε τις κλάσεις Tailwind στο header/hero για να ταιριάξουν με το brand σας.
+```
+app/
+├── layout.tsx          # Root layout + metadata
+├── page.tsx            # Κύρια σελίδα με listings, φίλτρα, χάρτη
+├── globals.css         # Global styles + design tokens
+components/
+├── Header.tsx          # Navigation + language toggle
+├── Footer.tsx          # Footer με στοιχεία επικοινωνίας
+└── PropertyMap.tsx     # Διαδραστικός χάρτης
+lib/
+├── data.ts             # Seed data (14 premium ακίνητα)
+└── types.ts            # TypeScript interfaces
+```
+
+## 🏠 Προσθήκη Νέου Ακινήτου
+
+Η ιστοσελίδα περιλαμβάνει πλήρη φόρμα για προσθήκη ακινήτων (για εσωτερική χρήση / demo). Τα ακίνητα αποθηκεύονται στο `localStorage` του browser.
+
+**Σημείωση για production:** Σε πραγματικό deployment το κουμπί "Προσθήκη Ακινήτου" μπορεί να αφαιρεθεί ή να προστατευτεί με authentication.
+
+## 🌍 Μελλοντικές Βελτιώσεις (Roadmap)
+
+- [ ] Πραγματική αποστολή φορμών (Resend / Formspree / EmailJS)
+- [ ] Δικές του σελίδες λεπτομέρειας ακινήτου (`/properties/[id]`)
+- [ ] Ενότητα "Ενοικιάσεις"
+- [ ] Testimonials & Team section
+- [ ] Blog / Market Insights
+- [ ] Admin panel ή integration με CMS (Sanity / Contentful)
+- [ ] Multi-image gallery per property
+- [ ] SEO optimizations + structured data (Schema.org RealEstateListing)
+- [ ] Dark mode
+
+## 📞 Επικοινωνία
+
+*Συμπλήρωσε με τα πραγματικά στοιχεία του γραφείου σου*
 
 ---
 
-## 📍 Ρεαλιστικά Δεδομένα (Πηγές)
-
-Οι τιμές και οι περιοχές βασίζονται σε πραγματικά στοιχεία αγοράς Λεμεσού 2025-2026:
-- Μέση τιμή διαμερίσματος ~ €250k–€600k
-- Βίλες σε premium περιοχές €800k–€2.5M+
-- €/m²: €3,200 – €9,000+ (ανάλογα την περιοχή)
-
-**Προσοχή:** Όλα τα ακίνητα είναι **εικονικά** για εκπαιδευτικούς/επιδεικτικούς σκοπούς.
-
----
-
-## 🔜 Επόμενα Βήματα / Next Steps (Προτάσεις)
-
-1. **Μετατροπή σε Next.js 14** (TypeScript + Tailwind + shadcn/ui)
-2. **Προσθήκη backend** (Supabase / Firebase / PocketBase) για αποθήκευση ακινήτων
-3. **Πραγματικά δεδομένα** — σύνδεση με API ή Google Sheets
-4. **Φόρμα επικοινωνίας** που στέλνει email (EmailJS ή Resend)
-5. **Φωτογραφίες υψηλής ποιότητας** — χρησιμοποιήστε το image_gen ή stock
-6. **Deploy** στο Vercel (στατικός hosting είναι άμεσος)
-
-Θέλετε να το μετατρέψω σε **πλήρες Next.js project** ή να προσθέσω κάποια από τα παραπάνω;
-
----
-
-## 📄 Άδεια / License
-
-Ελεύθερο για προσωπική και εκπαιδευτική χρήση.  
-Δημιουργήθηκε με ❤️ για demo σκοπούς από Grok.
-
----
-
-**Enjoy exploring Limassol real estate!** 🇨🇾
-
-Αν έχετε ερωτήσεις ή θέλετε επεκτάσεις — πείτε μου!
+**Built with ❤️ using Grok + Next.js** — Limassol, Cyprus
