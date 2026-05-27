@@ -1,0 +1,1496 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Λεμεσός Ακίνητα • Limassol Properties</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&amp;family=Playfair+Display:wght@700&amp;display=swap');
+        
+        :root {
+            --primary: #0f172a;
+        }
+        
+        .tail-container {
+            font-family: 'Inter', system_ui, sans-serif;
+        }
+        
+        .heading-serif {
+            font-family: 'Playfair Display', Georgia, serif;
+            font-weight: 700;
+        }
+
+        .property-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .property-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+        }
+
+        .filter-chip {
+            transition: all 0.2s ease;
+        }
+        
+        .filter-chip.active {
+            background-color: #0f172a;
+            color: white;
+            border-color: #0f172a;
+        }
+
+        .modal {
+            animation: modalPop 0.2s ease forwards;
+        }
+
+        @keyframes modalPop {
+            from { opacity: 0; transform: scale(0.96) translateY(10px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        .nav-active {
+            color: #0f172a;
+            font-weight: 600;
+        }
+
+        .section-title {
+            font-size: 1.35rem;
+            letter-spacing: -.025em;
+        }
+
+        .price-tag {
+            background: linear-gradient(135deg, #0f172a, #1e2937);
+            color: white;
+            box-shadow: 0 10px 15px -3px rgb(15 23 42 / 0.2);
+        }
+
+        .mediterranean-gradient {
+            background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%);
+        }
+
+        .listing-grid {
+            scrollbar-width: thin;
+        }
+
+        .map-container {
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+        }
+
+        .property-image {
+            transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), 
+                        box-shadow 0.3s ease;
+        }
+        
+        .property-card:hover .property-image {
+            transform: scale(1.06);
+        }
+
+        .spec-pill {
+            background-color: #f8fafc;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .stat-number {
+            font-variant-numeric: tabular-nums;
+        }
+
+        .leaflet-popup-content-wrapper {
+            border-radius: 12px;
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.15);
+        }
+
+        .custom-toast {
+            animation: toastSlide 0.3s ease forwards;
+        }
+    </style>
+</head>
+<body class="tail-container bg-slate-50 text-slate-800">
+    <!-- Header -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-50">
+        <div class="max-w-screen-2xl mx-auto">
+            <div class="px-6 py-4 flex items-center justify-between">
+                <div class="flex items-center gap-x-3">
+                    <!-- Logo -->
+                    <div class="flex items-center gap-x-2.5">
+                        <div class="w-10 h-10 bg-slate-900 rounded-2xl flex items-center justify-center shadow-inner">
+                            <span class="text-white text-3xl leading-none mt-0.5">🏠</span>
+                        </div>
+                        <div>
+                            <div class="font-semibold text-2xl tracking-tighter heading-serif">Λεμεσός</div>
+                            <div class="text-[10px] text-slate-500 -mt-1 font-medium tracking-[1px]">REAL ESTATE</div>
+                        </div>
+                    </div>
+                    <div class="hidden md:block pl-3 border-l border-slate-200">
+                        <div class="text-xs font-medium text-slate-500">LIMASSOL • CYPRUS</div>
+                    </div>
+                </div>
+
+                <!-- Nav -->
+                <div class="hidden md:flex items-center gap-x-2 text-sm">
+                    <button onclick="showListingsView()" 
+                            class="view-tab px-4 py-2 rounded-3xl font-medium text-slate-700 hover:bg-slate-100 active-tab" id="tab-listings">
+                        Ακίνητα
+                    </button>
+                    <button onclick="showMapView()" 
+                            class="view-tab px-4 py-2 rounded-3xl font-medium text-slate-700 hover:bg-slate-100" id="tab-map">
+                        Χάρτης
+                    </button>
+                </div>
+
+                <div class="flex items-center gap-x-3">
+                    <!-- Language Toggle -->
+                    <div class="flex items-center bg-slate-100 rounded-3xl p-1 text-sm font-medium shadow-inner">
+                        <button onclick="setLanguage('el')" 
+                                id="lang-el"
+                                class="px-4 py-1.5 rounded-3xl transition-all active">EL</button>
+                        <button onclick="setLanguage('en')" 
+                                id="lang-en"
+                                class="px-4 py-1.5 rounded-3xl transition-all text-slate-500 hover:text-slate-700">EN</button>
+                    </div>
+
+                    <!-- Add Property -->
+                    <button onclick="showAddPropertyModal()"
+                            class="flex items-center gap-x-2 bg-slate-900 hover:bg-black transition-colors text-white px-5 py-2.5 rounded-3xl text-sm font-semibold shadow-lg shadow-slate-900/25 active:scale-[0.985]">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" />
+                        </svg>
+                        <span class="hidden sm:inline" data-i18n="add">Προσθήκη</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero -->
+    <div class="mediterranean-gradient text-white py-12 md:py-16">
+        <div class="max-w-screen-2xl mx-auto px-6">
+            <div class="max-w-3xl">
+                <div class="inline-flex items-center gap-x-2 bg-white/10 backdrop-blur-lg px-4 py-1 rounded-3xl text-sm mb-5 border border-white/20">
+                    <div class="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
+                    <span class="font-medium" data-i18n="hero-badge">14 ακίνητα διαθέσιμα σήμερα</span>
+                </div>
+                
+                <h1 class="text-5xl md:text-6xl leading-[1.05] tracking-tighter heading-serif font-bold mb-4">
+                    Βρείτε το σπίτι<br>των ονείρων σας<br>στη Λεμεσό
+                </h1>
+                <p class="text-xl text-white/90 max-w-md" data-i18n="hero-subtitle">
+                    Αποκλειστικές βίλες, διαμερίσματα και μεζονέτες σε premium περιοχές της Λεμεσού
+                </p>
+                
+                <div class="flex items-center gap-x-6 mt-8 text-sm">
+                    <div class="flex items-center -space-x-2">
+                        <div class="w-8 h-8 bg-white/90 rounded-full border-2 border-white overflow-hidden ring-1 ring-white/50"><img src="https://picsum.photos/id/1011/32/32" class="object-cover"></div>
+                        <div class="w-8 h-8 bg-white/90 rounded-full border-2 border-white overflow-hidden ring-1 ring-white/50"><img src="https://picsum.photos/id/1005/32/32" class="object-cover"></div>
+                        <div class="w-8 h-8 bg-white/90 rounded-full border-2 border-white overflow-hidden ring-1 ring-white/50"><img src="https://picsum.photos/id/1009/32/32" class="object-cover"></div>
+                    </div>
+                    <div class="text-white/80 text-sm">
+                        <span class="font-semibold text-white">320+</span> <span data-i18n="happy-clients">ευχαριστημένοι πελάτες</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="max-w-screen-2xl mx-auto px-6 -mt-5 relative z-10">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div class="bg-white border border-slate-200 shadow-sm rounded-3xl px-5 py-4 flex items-center gap-4">
+                <div>
+                    <div class="text-xs font-medium text-slate-500" data-i18n="stat-properties">Ακίνητα</div>
+                    <div class="text-3xl font-semibold tracking-tighter stat-number" id="stat-total">14</div>
+                </div>
+                <div class="flex-1 h-2 bg-emerald-100 rounded-full overflow-hidden"><div class="h-2 w-[82%] bg-emerald-500 rounded-full"></div></div>
+            </div>
+            <div class="bg-white border border-slate-200 shadow-sm rounded-3xl px-5 py-4 flex items-center gap-4">
+                <div>
+                    <div class="text-xs font-medium text-slate-500" data-i18n="stat-avg-price">Μέση τιμή</div>
+                    <div class="text-3xl font-semibold tracking-tighter stat-number" id="stat-avg-price">€682k</div>
+                </div>
+                <div class="text-emerald-500 text-xs font-medium">+7.4%</div>
+            </div>
+            <div class="bg-white border border-slate-200 shadow-sm rounded-3xl px-5 py-4 flex items-center gap-4">
+                <div>
+                    <div class="text-xs font-medium text-slate-500" data-i18n="stat-villas">Βίλες</div>
+                    <div class="text-3xl font-semibold tracking-tighter stat-number" id="stat-villas">6</div>
+                </div>
+                <div class="text-xs px-2.5 py-1 bg-amber-100 text-amber-700 rounded-2xl font-medium self-start mt-1">Premium</div>
+            </div>
+            <div class="bg-white border border-slate-200 shadow-sm rounded-3xl px-5 py-4 flex items-center gap-4">
+                <div>
+                    <div class="text-xs font-medium text-slate-500" data-i18n="stat-areas">Περιοχές</div>
+                    <div class="text-3xl font-semibold tracking-tighter">7</div>
+                </div>
+                <div class="text-[10px] leading-tight text-slate-500">Γερμασόγεια • Μαρίνα<br>Άγιος Αθανάσιος</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="max-w-screen-2xl mx-auto px-6 pt-8 pb-12">
+        
+        <!-- Search & Controls -->
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-y-4 mb-5">
+            <div class="flex-1 max-w-md">
+                <div class="relative">
+                    <input id="search-input" 
+                           type="text" 
+                           onkeyup="applyFilters()"
+                           placeholder="Αναζήτηση (π.χ. βίλα, θάλασσα, 3 υπνοδωμάτια...)"
+                           class="w-full bg-white border border-slate-300 focus:border-slate-400 transition pl-11 py-3 rounded-3xl text-sm placeholder:text-slate-400 outline-none">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 absolute left-4 top-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.25" d="M21 21l-6-6m2-5a7 7 0 01-14 0 7 7 0 0114 0z" />
+                    </svg>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-x-3">
+                <!-- Sort -->
+                <select id="sort-select" onchange="applyFilters()" 
+                        class="bg-white border border-slate-300 text-sm rounded-3xl px-4 py-3 font-medium outline-none">
+                    <option value="newest" data-i18n="sort-newest">Νεότερα πρώτα</option>
+                    <option value="price-low" data-i18n="sort-price-low">Τιμή: Χαμηλή → Υψηλή</option>
+                    <option value="price-high" data-i18n="sort-price-high">Τιμή: Υψηλή → Χαμηλή</option>
+                    <option value="size" data-i18n="sort-size">Τ.μ. (μεγαλύτερα)</option>
+                </select>
+
+                <button onclick="clearAllFilters()" 
+                        class="text-sm font-medium text-slate-500 hover:text-slate-800 px-4 py-3 flex items-center gap-x-1.5 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6h12v12" />
+                    </svg>
+                    <span data-i18n="clear-filters">Καθαρισμός</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="flex flex-col xl:flex-row gap-6">
+            
+            <!-- Filters Sidebar -->
+            <div class="xl:w-72 shrink-0 bg-white border border-slate-200 rounded-3xl p-5 h-fit sticky top-4 self-start">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="font-semibold flex items-center gap-x-2 text-base">
+                        <span data-i18n="filters">Φίλτρα</span>
+                    </div>
+                    <button onclick="clearAllFilters()" class="text-xs text-emerald-600 hover:text-emerald-700 font-medium">Επαναφορά</button>
+                </div>
+
+                <!-- Property Type -->
+                <div class="mb-6">
+                    <div class="text-xs font-semibold text-slate-500 tracking-wider mb-2.5">ΤΥΠΟΣ ΑΚΙΝΗΤΟΥ</div>
+                    <div class="flex flex-wrap gap-2" id="type-filters">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <!-- Price Range -->
+                <div class="mb-6">
+                    <div class="text-xs font-semibold text-slate-500 tracking-wider mb-2.5">ΤΙΜΗ (€)</div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <div class="text-[10px] text-slate-500 mb-1">Ελάχιστη</div>
+                            <input id="price-min" type="number" value="100000" step="50000" 
+                                   oninput="applyFilters()" 
+                                   class="w-full border border-slate-300 rounded-2xl px-3 py-2 text-sm font-medium">
+                        </div>
+                        <div>
+                            <div class="text-[10px] text-slate-500 mb-1">Μέγιστη</div>
+                            <input id="price-max" type="number" value="2800000" step="50000" 
+                                   oninput="applyFilters()" 
+                                   class="w-full border border-slate-300 rounded-2xl px-3 py-2 text-sm font-medium">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Size -->
+                <div class="mb-6">
+                    <div class="text-xs font-semibold text-slate-500 tracking-wider mb-2.5">ΕΜΒΑΔΟΝ (τ.μ.)</div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <div class="text-[10px] text-slate-500 mb-1">Ελάχιστο</div>
+                            <input id="size-min" type="number" value="40" oninput="applyFilters()" 
+                                   class="w-full border border-slate-300 rounded-2xl px-3 py-2 text-sm font-medium">
+                        </div>
+                        <div>
+                            <div class="text-[10px] text-slate-500 mb-1">Μέγιστο</div>
+                            <input id="size-max" type="number" value="450" oninput="applyFilters()" 
+                                   class="w-full border border-slate-300 rounded-2xl px-3 py-2 text-sm font-medium">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bedrooms -->
+                <div class="mb-6">
+                    <div class="text-xs font-semibold text-slate-500 tracking-wider mb-2.5">ΥΠΝΟΔΩΜΑΤΙΑ</div>
+                    <div class="flex gap-2 flex-wrap" id="bedroom-filters">
+                        <!-- JS populated -->
+                    </div>
+                </div>
+
+                <!-- Districts -->
+                <div>
+                    <div class="text-xs font-semibold text-slate-500 tracking-wider mb-2.5">ΠΕΡΙΟΧΗ</div>
+                    <div class="flex flex-wrap gap-1.5" id="district-filters">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Listings Grid -->
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center justify-between mb-3 px-1">
+                    <div>
+                        <span id="results-count" class="font-semibold text-xl">14</span> 
+                        <span class="text-slate-500 text-sm" data-i18n="results">αποτελέσματα</span>
+                    </div>
+                    <div class="text-xs hidden md:block text-slate-500">Κάντε κλικ σε κάρτα για λεπτομέρειες</div>
+                </div>
+
+                <!-- Cards Grid -->
+                <div id="listings-grid" 
+                     class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 listing-grid">
+                    <!-- Populated dynamically via JS -->
+                </div>
+                
+                <div id="no-results" class="hidden mt-10 text-center py-8">
+                    <div class="text-6xl mb-3">🔍</div>
+                    <div class="font-semibold text-xl">Δεν βρέθηκαν ακίνητα</div>
+                    <p class="text-slate-500 mt-1 text-sm">Δοκιμάστε να αλλάξετε τα φίλτρα αναζήτησης</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- MAP SECTION -->
+        <div class="mt-10" id="map-section">
+            <div class="flex items-center justify-between mb-3 px-1">
+                <div>
+                    <span class="font-semibold text-xl">Εξερευνήστε στον χάρτη</span>
+                    <span class="ml-3 text-xs font-medium px-3 py-1 bg-white border rounded-2xl text-slate-600">Interactive • Leaflet</span>
+                </div>
+                <button onclick="fitMapToMarkers()" 
+                        class="text-xs font-medium flex items-center gap-1 text-emerald-700 hover:text-emerald-800">
+                    <span>Κεντράρισμα χάρτη</span>
+                </button>
+            </div>
+            
+            <div class="map-container bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
+                <div id="map" class="w-full h-[420px] z-0"></div>
+            </div>
+            <div class="text-[10px] text-center text-slate-400 mt-1.5">Κάντε κλικ σε marker για γρήγορη προβολή • Τα δεδομένα είναι εικονικά</div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="border-t bg-white py-6">
+        <div class="max-w-screen-2xl mx-auto px-6 text-center text-xs text-slate-400">
+            Demo project • Real Estate Limassol • All listings are fictional for demonstration purposes • 
+            <span class="cursor-pointer hover:text-slate-600" onclick="showAddPropertyModal()">Add your own</span>
+        </div>
+    </footer>
+
+    <!-- PROPERTY DETAIL MODAL -->
+    <div id="detail-modal" onclick="if (event.target.id === 'detail-modal') hideDetailModal()" 
+         class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+        <div onclick="event.stopImmediatePropagation()" 
+             class="modal bg-white w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl">
+            
+            <!-- Modal Image -->
+            <div class="relative h-72 md:h-80 bg-slate-100">
+                <img id="modal-image" class="w-full h-full object-cover" alt="">
+                <div class="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/70 to-transparent"></div>
+                
+                <button onclick="hideDetailModal()" 
+                        class="absolute top-4 right-4 bg-white/95 backdrop-blur rounded-2xl px-3.5 py-1.5 text-sm font-medium flex items-center gap-x-1 shadow">
+                    <span>Κλείσιμο</span>
+                </button>
+                
+                <div id="modal-price" 
+                     class="absolute bottom-4 left-4 price-tag px-5 py-1.5 rounded-3xl text-xl font-semibold shadow-xl">
+                </div>
+                
+                <div id="modal-type-badge"
+                     class="absolute top-4 left-4 bg-white text-slate-700 px-4 py-1 text-xs font-bold tracking-wider rounded-2xl shadow flex items-center gap-1.5">
+                </div>
+            </div>
+
+            <div class="p-6 md:p-7">
+                <div class="flex justify-between gap-3">
+                    <div>
+                        <h3 id="modal-title" class="font-semibold text-3xl tracking-tight"></h3>
+                        <div id="modal-location" class="flex items-center gap-x-1.5 text-lg text-slate-600 mt-0.5"></div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-4 gap-3 mt-6 mb-7">
+                    <div class="border border-slate-100 bg-slate-50 rounded-2xl p-3 text-center">
+                        <div class="text-[10px] uppercase tracking-widest text-slate-500">Τ.μ.</div>
+                        <div id="modal-size" class="font-semibold text-xl"></div>
+                    </div>
+                    <div class="border border-slate-100 bg-slate-50 rounded-2xl p-3 text-center">
+                        <div class="text-[10px] uppercase tracking-widest text-slate-500">Υπνοδωμ.</div>
+                        <div id="modal-beds" class="font-semibold text-xl"></div>
+                    </div>
+                    <div class="border border-slate-100 bg-slate-50 rounded-2xl p-3 text-center">
+                        <div class="text-[10px] uppercase tracking-widest text-slate-500">Μπάνια</div>
+                        <div id="modal-baths" class="font-semibold text-xl"></div>
+                    </div>
+                    <div class="border border-slate-100 bg-slate-50 rounded-2xl p-3 text-center">
+                        <div class="text-[10px] uppercase tracking-widest text-slate-500">Έτος</div>
+                        <div id="modal-year" class="font-semibold text-xl"></div>
+                    </div>
+                </div>
+
+                <div class="mb-6">
+                    <div class="font-semibold mb-1.5 text-sm">ΠΕΡΙΓΡΑΦΗ</div>
+                    <p id="modal-description" class="text-[15px] leading-relaxed text-slate-600"></p>
+                </div>
+
+                <div class="mb-6">
+                    <div class="font-semibold mb-2 text-sm">ΧΑΡΑΚΤΗΡΙΣΤΙΚΑ</div>
+                    <div id="modal-features" class="flex flex-wrap gap-2 text-sm"></div>
+                </div>
+
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <button onclick="contactAgent()" 
+                            class="flex-1 py-3.5 bg-emerald-600 hover:bg-emerald-700 transition font-semibold text-white rounded-3xl flex items-center justify-center gap-x-2 text-sm">
+                        <span data-i18n="contact-agent">Επικοινωνία με μεσίτη</span>
+                    </button>
+                    <button onclick="bookViewing()" 
+                            class="flex-1 py-3.5 border border-slate-300 hover:bg-slate-50 transition font-semibold rounded-3xl text-sm flex items-center justify-center gap-x-2">
+                        <span>Κλείστε ραντεβού</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ADD NEW PROPERTY MODAL -->
+    <div id="add-modal" onclick="if (event.target.id === 'add-modal') hideAddModal()" 
+         class="hidden fixed inset-0 bg-black/60 backdrop-blur z-[110] flex items-center justify-center p-4">
+        <div onclick="event.stopImmediatePropagation()" class="modal bg-white rounded-3xl w-full max-w-lg shadow-2xl">
+            <div class="p-6 border-b">
+                <div class="font-semibold text-xl">Προσθήκη Νέου Ακινήτου</div>
+                <div class="text-xs text-slate-500">Θα προστεθεί προσωρινά στη λίστα (μόνο για αυτή τη συνεδρία)</div>
+            </div>
+            
+            <div class="p-6 space-y-4 text-sm">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-xs font-medium">Τίτλος (Ελληνικά)</label>
+                        <input id="add-title-el" class="border border-slate-300 w-full rounded-2xl px-3 py-2 mt-1" value="Μοντέρνα Βίλα με Πισίνα">
+                    </div>
+                    <div>
+                        <label class="text-xs font-medium">Title (English)</label>
+                        <input id="add-title-en" class="border border-slate-300 w-full rounded-2xl px-3 py-2 mt-1" value="Modern Pool Villa">
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-xs font-medium">Τιμή (€)</label>
+                        <input id="add-price" type="number" class="border border-slate-300 w-full rounded-2xl px-3 py-2 mt-1" value="950000">
+                    </div>
+                    <div>
+                        <label class="text-xs font-medium">Εμβαδόν (τ.μ.)</label>
+                        <input id="add-size" type="number" class="border border-slate-300 w-full rounded-2xl px-3 py-2 mt-1" value="245">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-4">
+                    <div>
+                        <label class="text-xs font-medium">Υπνοδωμάτια</label>
+                        <select id="add-beds" class="border border-slate-300 w-full rounded-2xl px-3 py-2 mt-1">
+                            <option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs font-medium">Μπάνια</label>
+                        <select id="add-baths" class="border border-slate-300 w-full rounded-2xl px-3 py-2 mt-1">
+                            <option>1</option><option selected>2</option><option>3</option><option>4</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs font-medium">Έτος</label>
+                        <input id="add-year" type="number" value="2022" class="border border-slate-300 w-full rounded-2xl px-3 py-2 mt-1">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-xs font-medium">Τύπος</label>
+                        <select id="add-type" class="border border-slate-300 w-full rounded-2xl px-3 py-2 mt-1">
+                            <option value="Villa">Βίλα / Villa</option>
+                            <option value="Apartment">Διαμέρισμα / Apartment</option>
+                            <option value="Maisonette">Μεζονέτα / Maisonette</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs font-medium">Περιοχή</label>
+                        <select id="add-district" class="border border-slate-300 w-full rounded-2xl px-3 py-2 mt-1">
+                            <!-- populated by JS -->
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="text-xs font-medium">Περιγραφή (Ελληνικά)</label>
+                    <textarea id="add-desc-el" rows="2" class="border border-slate-300 w-full rounded-2xl px-3 py-2 mt-1 text-sm">Όμορφη βίλα σε ήσυχη γειτονιά με εύκολη πρόσβαση στη θάλασσα.</textarea>
+                </div>
+                <div>
+                    <label class="text-xs font-medium">Description (English)</label>
+                    <textarea id="add-desc-en" rows="2" class="border border-slate-300 w-full rounded-2xl px-3 py-2 mt-1 text-sm">Beautiful villa in a quiet neighborhood close to the sea.</textarea>
+                </div>
+            </div>
+            
+            <div class="p-6 pt-2 flex gap-x-3 border-t">
+                <button onclick="hideAddModal()" class="flex-1 py-3 rounded-3xl border">Ακύρωση</button>
+                <button onclick="addNewProperty()" 
+                        class="flex-1 py-3 rounded-3xl bg-slate-900 text-white font-semibold">Προσθήκη Ακινήτου</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast container -->
+    <div id="toast-container" class="fixed bottom-4 right-4 z-[200] flex flex-col gap-y-2"></div>
+
+    <script>
+        // ============ DATA MODEL & MOCK LISTINGS ============
+        let properties = [
+            {
+                id: 1,
+                title: { el: "Εντυπωσιακή 4-Υπνο Βίλα με Ιδιωτική Πισίνα", en: "Stunning 4-Bed Villa with Private Pool" },
+                area: { el: "Γερμασόγεια", en: "Germasogeia" },
+                type: { el: "Βίλα", en: "Villa" },
+                price: 1250000,
+                size: 285,
+                bedrooms: 4,
+                bathrooms: 3,
+                year: 2021,
+                lat: 34.726,
+                lng: 33.082,
+                image: "https://picsum.photos/id/1016/800/600",
+                description: { 
+                    el: "Εξαιρετική βίλα σε απόλυτα ιδιωτικό περιβάλλον. Μεγάλος κήπος, πισίνα 12μ, BBQ area και άμεση πρόσβαση στην παραλία του Δασουδίου. Ιδανική για οικογένειες ή ως επένδυση.", 
+                    en: "Exceptional villa in a completely private setting. Large garden, 12m pool, BBQ area and direct access to Dasoudi beach. Perfect for families or investment." 
+                },
+                features: ["Πισίνα", "Κήπος", "Sea View", "Parking"]
+            },
+            {
+                id: 2,
+                title: { el: "Μοντέρνο Διαμέρισμα 2 Υπνοδωματίων στη Μαρίνα", en: "Modern 2-Bed Apartment at the Marina" },
+                area: { el: "Μαρίνα Λεμεσού", en: "Limassol Marina" },
+                type: { el: "Διαμέρισμα", en: "Apartment" },
+                price: 485000,
+                size: 92,
+                bedrooms: 2,
+                bathrooms: 2,
+                year: 2023,
+                lat: 34.703,
+                lng: 33.010,
+                image: "https://picsum.photos/id/160/800/600",
+                description: { 
+                    el: "Πλήρως ανακαινισμένο διαμέρισμα υψηλών προδιαγραφών με θέα τη μαρίνα. Βρίσκεται σε νέο κτίριο με concierge, gym και parking. Βήματα από εστιατόρια και καταστήματα.", 
+                    en: "Fully renovated high-spec apartment with marina views. Located in a new building with concierge, gym and parking. Steps from restaurants and shops." 
+                },
+                features: ["Marina View", "Gym", "Concierge", "Parking"]
+            },
+            {
+                id: 3,
+                title: { el: "Πολυτελής 3-Υπνο Βίλα με Θέα στη Θάλασσα", en: "Luxury 3-Bed Sea View Villa" },
+                area: { el: "Άγιος Τύχωνας", en: "Agios Tychonas" },
+                type: { el: "Βίλα", en: "Villa" },
+                price: 1890000,
+                size: 310,
+                bedrooms: 3,
+                bathrooms: 4,
+                year: 2019,
+                lat: 34.715,
+                lng: 33.105,
+                image: "https://picsum.photos/id/201/800/600",
+                description: { 
+                    el: "Αρχιτεκτονικό αριστούργημα με απρόσκοπτη θέα στη θάλασσα. Ιδιωτική πισίνα, τεράστια βεράντα και υψηλής ποιότητας υλικά. Μόλις 5 λεπτά από το κέντρο.", 
+                    en: "Architectural masterpiece with uninterrupted sea views. Private pool, huge terrace and premium finishes. Just 5 minutes from the city center." 
+                },
+                features: ["Sea View", "Πισίνα", "Smart Home", "Large Plot"]
+            },
+            {
+                id: 4,
+                title: { el: "Νέο 1-Υπνο Διαμέρισμα – Άγιος Αθανάσιος", en: "Brand New 1-Bed Apartment – Agios Athanasios" },
+                area: { el: "Άγιος Αθανάσιος", en: "Agios Athanasios" },
+                type: { el: "Διαμέρισμα", en: "Apartment" },
+                price: 235000,
+                size: 58,
+                bedrooms: 1,
+                bathrooms: 1,
+                year: 2024,
+                lat: 34.698,
+                lng: 33.042,
+                image: "https://picsum.photos/id/133/800/600",
+                description: { 
+                    el: "Πλήρως εξοπλισμένο νέο διαμέρισμα σε εξαιρετική τοποθεσία. Ιδανικό για επένδυση ή για νέους επαγγελματίες. Υψηλή ζήτηση στην περιοχή.", 
+                    en: "Brand new fully furnished apartment in an excellent location. Perfect for investment or young professionals. High demand area." 
+                },
+                features: ["Νέο Κτίριο", "Fully Furnished", "Parking"]
+            },
+            {
+                id: 5,
+                title: { el: "Μεζονέτα 4 Υπνοδωματίων με Κήπο", en: "Spacious 4-Bed Maisonette with Garden" },
+                area: { el: "Μέσα Γειτονιά", en: "Mesa Geitonia" },
+                type: { el: "Μεζονέτα", en: "Maisonette" },
+                price: 625000,
+                size: 178,
+                bedrooms: 4,
+                bathrooms: 3,
+                year: 2018,
+                lat: 34.712,
+                lng: 33.051,
+                image: "https://picsum.photos/id/1018/800/600",
+                description: { 
+                    el: "Μεγάλη οικογενειακή μεζονέτα με ιδιωτικό κήπο και βεράντες. Πολύ καλές κατασκευές και χαμηλό κόστος συντήρησης. Κοντά σε σχολεία και πάρκα.", 
+                    en: "Large family maisonette with private garden and terraces. Excellent construction and low maintenance costs. Close to schools and parks." 
+                },
+                features: ["Garden", "Family Home", "Parking", "Terrace"]
+            },
+            {
+                id: 6,
+                title: { el: "Διαμέρισμα 3 Υπνοδωματίων – Κέντρο Λεμεσού", en: "3-Bed Apartment in Limassol City Centre" },
+                area: { el: "Κέντρο Λεμεσού", en: "Limassol City Centre" },
+                type: { el: "Διαμέρισμα", en: "Apartment" },
+                price: 395000,
+                size: 108,
+                bedrooms: 3,
+                bathrooms: 2,
+                year: 2016,
+                lat: 34.708,
+                lng: 33.023,
+                image: "https://picsum.photos/id/1036/800/600",
+                description: { 
+                    el: "Ευρύχωρο διαμέρισμα σε κεντρικό σημείο. Ιδανικό για όσους θέλουν να είναι κοντά σε όλες τις ανέσεις, εστιατόρια και την παραλία.", 
+                    en: "Spacious apartment in a central location. Ideal for those wanting to be close to all amenities, restaurants and the beach." 
+                },
+                features: ["Central Location", "Balcony", "Parking"]
+            },
+            {
+                id: 7,
+                title: { el: "Πολυτελής Βίλα 5 Υπνοδωματίων – Ζακάκι", en: "Luxury 5-Bed Villa in Zakaki" },
+                area: { el: "Ζακάκι", en: "Zakaki" },
+                type: { el: "Βίλα", en: "Villa" },
+                price: 1670000,
+                size: 385,
+                bedrooms: 5,
+                bathrooms: 5,
+                year: 2022,
+                lat: 34.687,
+                lng: 32.983,
+                image: "https://picsum.photos/id/180/800/600",
+                description: { 
+                    el: "Εντυπωσιακή σύγχρονη βίλα κοντά στο νέο καζίνο City of Dreams. Ιδιωτική πισίνα, γυμναστήριο, σάουνα και τεράστιο οικόπεδο. Υψηλή επενδυτική αξία.", 
+                    en: "Impressive modern villa near the new City of Dreams casino. Private pool, gym, sauna and huge plot. High investment value." 
+                },
+                features: ["Πισίνα", "Gym", "Sauna", "Large Plot", "Smart Home"]
+            },
+            {
+                id: 8,
+                title: { el: "Σύγχρονο Διαμέρισμα 2 Υπνοδωματίων", en: "Contemporary 2-Bed Apartment" },
+                area: { el: "Γερμασόγεια", en: "Germasogeia" },
+                type: { el: "Διαμέρισμα", en: "Apartment" },
+                price: 355000,
+                size: 84,
+                bedrooms: 2,
+                bathrooms: 1,
+                year: 2020,
+                lat: 34.722,
+                lng: 33.078,
+                image: "https://picsum.photos/id/251/800/600",
+                description: { 
+                    el: "Ανανεωμένο διαμέρισμα σε ήσυχο συγκρότημα με πισίνα. Πολύ καλή τοποθεσία κοντά σε παραλία και εμπορικά κέντρα.", 
+                    en: "Renovated apartment in a quiet complex with pool. Excellent location close to the beach and shopping centers." 
+                },
+                features: ["Community Pool", "Renovated", "Parking"]
+            },
+            {
+                id: 9,
+                title: { el: "Βίλα 3 Υπνοδωματίων με Θέα στο Βουνό", en: "3-Bed Villa with Mountain Views" },
+                area: { el: "Άγιος Αθανάσιος", en: "Agios Athanasios" },
+                type: { el: "Βίλα", en: "Villa" },
+                price: 795000,
+                size: 210,
+                bedrooms: 3,
+                bathrooms: 3,
+                year: 2017,
+                lat: 34.695,
+                lng: 33.038,
+                image: "https://picsum.photos/id/1015/800/600",
+                description: { 
+                    el: "Ήσυχη βίλα σε προνομιακή τοποθεσία με υπέροχη θέα. Ιδανική για οικογένειες που αναζητούν ιδιωτικότητα και άνεση.", 
+                    en: "Quiet villa in a privileged location with beautiful views. Perfect for families seeking privacy and comfort." 
+                },
+                features: ["Mountain View", "Garden", "BBQ Area"]
+            },
+            {
+                id: 10,
+                title: { el: "Πεντακάθαρο Διαμέρισμα 1 Υπνοδωματίου", en: "Immaculate 1-Bedroom Apartment" },
+                area: { el: "Μέσα Γειτονιά", en: "Mesa Geitonia" },
+                type: { el: "Διαμέρισμα", en: "Apartment" },
+                price: 198000,
+                size: 55,
+                bedrooms: 1,
+                bathrooms: 1,
+                year: 2022,
+                lat: 34.710,
+                lng: 33.053,
+                image: "https://picsum.photos/id/29/800/600",
+                description: { 
+                    el: "Πλήρως ανακαινισμένο και επιπλωμένο. Ιδανικό για επενδυτές που θέλουν υψηλή απόδοση από ενοίκια ή για προσωπική χρήση.", 
+                    en: "Fully renovated and furnished. Ideal for investors looking for high rental yields or personal use." 
+                },
+                features: ["Fully Furnished", "High Yield", "Parking"]
+            },
+            {
+                id: 11,
+                title: { el: "Μεζονέτα 3 Υπνοδωματίων – Μαρίνα", en: "3-Bed Maisonette near Marina" },
+                area: { el: "Μαρίνα Λεμεσού", en: "Limassol Marina" },
+                type: { el: "Μεζονέτα", en: "Maisonette" },
+                price: 720000,
+                size: 155,
+                bedrooms: 3,
+                bathrooms: 2,
+                year: 2021,
+                lat: 34.706,
+                lng: 33.015,
+                image: "https://picsum.photos/id/1033/800/600",
+                description: { 
+                    el: "Πολυτελής μεζονέτα με 2 βεράντες και θέα. Βρίσκεται σε αποκλειστικό συγκρότημα κοντά στη μαρίνα και το εμπορικό κέντρο.", 
+                    en: "Luxury maisonette with two terraces and views. Located in an exclusive complex near the marina and shopping district." 
+                },
+                features: ["Sea View", "Terraces", "Private Entrance"]
+            },
+            {
+                id: 12,
+                title: { el: "Σπάνια Βίλα 4 Υπνοδωματίων με Μεγάλο Οικόπεδο", en: "Rare 4-Bed Villa on Large Plot" },
+                area: { el: "Άγιος Τύχωνας", en: "Agios Tychonas" },
+                type: { el: "Βίλα", en: "Villa" },
+                price: 2450000,
+                size: 420,
+                bedrooms: 4,
+                bathrooms: 5,
+                year: 2015,
+                lat: 34.718,
+                lng: 33.112,
+                image: "https://picsum.photos/id/160/800/600",
+                description: { 
+                    el: "Μία από τις μεγαλύτερες και πιο ιδιωτικές βίλες της περιοχής. Εκτεταμένος κήπος 2000+ τ.μ., πισίνα και δυνατότητα επέκτασης.", 
+                    en: "One of the largest and most private villas in the area. Extensive 2000+ m² garden, pool and expansion potential." 
+                },
+                features: ["Πισίνα", "Huge Garden", "Privacy", "Investment"]
+            },
+            {
+                id: 13,
+                title: { el: "Διαμέρισμα 2 Υπνοδωματίων – Ζακάκι", en: "2-Bed Apartment in Zakaki" },
+                area: { el: "Ζακάκι", en: "Zakaki" },
+                type: { el: "Διαμέρισμα", en: "Apartment" },
+                price: 265000,
+                size: 78,
+                bedrooms: 2,
+                bathrooms: 2,
+                year: 2023,
+                lat: 34.685,
+                lng: 32.988,
+                image: "https://picsum.photos/id/251/800/600",
+                description: { 
+                    el: "Νέο διαμέρισμα σε αναπτυσσόμενη περιοχή. Πολύ καλή σχέση ποιότητας/τιμής και υψηλή ζήτηση για ενοικίαση.", 
+                    en: "New apartment in an up-and-coming area. Excellent price-to-quality ratio with high rental demand." 
+                },
+                features: ["New Build", "Investment", "Parking"]
+            },
+            {
+                id: 14,
+                title: { el: "Κομψή Βίλα 3 Υπνοδωματίων – Γερμασόγεια", en: "Elegant 3-Bed Villa – Germasogeia" },
+                area: { el: "Γερμασόγεια", en: "Germasogeia" },
+                type: { el: "Βίλα", en: "Villa" },
+                price: 895000,
+                size: 195,
+                bedrooms: 3,
+                bathrooms: 3,
+                year: 2020,
+                lat: 34.728,
+                lng: 33.089,
+                image: "https://picsum.photos/id/1015/800/600",
+                description: { 
+                    el: "Κομψή βίλα σε ήσυχη κατοικημένη περιοχή. Ιδιωτική πισίνα, όμορφος κήπος και εύκολη πρόσβαση σε όλες τις ανέσεις της Λεμεσού.", 
+                    en: "Elegant villa in a quiet residential area. Private pool, beautiful garden and easy access to all Limassol amenities." 
+                },
+                features: ["Πισίνα", "Garden", "Close to Beach"]
+            }
+        ]
+
+        // ============ STATE ============
+        let currentLang = 'el'
+        let currentFilters = {
+            search: '',
+            types: [],
+            districts: [],
+            minPrice: 100000,
+            maxPrice: 2800000,
+            minSize: 40,
+            maxSize: 450,
+            minBeds: 0
+        }
+        let map = null
+        let markersLayer = null
+        let filteredPropertiesCache = []
+
+        const districtOptions = [
+            "Γερμασόγεια", "Άγιος Αθανάσιος", "Μαρίνα Λεμεσού", 
+            "Ζακάκι", "Μέσα Γειτονιά", "Κέντρο Λεμεσού", "Άγιος Τύχωνας"
+        ]
+
+        const typeOptions = ["Βίλα", "Διαμέρισμα", "Μεζονέτα"]
+
+        // ============ I18N ============
+        const i18n = {
+            'el': {
+                'hero-badge': '14 ακίνητα διαθέσιμα σήμερα',
+                'hero-subtitle': 'Αποκλειστικές βίλες, διαμερίσματα και μεζονέτες σε premium περιοχές της Λεμεσού',
+                'happy-clients': 'ευχαριστημένοι πελάτες',
+                'stat-properties': 'Ακίνητα',
+                'stat-avg-price': 'Μέση τιμή',
+                'stat-villas': 'Βίλες',
+                'stat-areas': 'Περιοχές',
+                'filters': 'Φίλτρα',
+                'add': 'Προσθήκη',
+                'clear-filters': 'Καθαρισμός',
+                'results': 'αποτελέσματα',
+                'sort-newest': 'Νεότερα πρώτα',
+                'sort-price-low': 'Τιμή: Χαμηλή → Υψηλή',
+                'sort-price-high': 'Τιμή: Υψηλή → Χαμηλή',
+                'sort-size': 'Τ.μ. (μεγαλύτερα)',
+                'contact-agent': 'Επικοινωνία με μεσίτη'
+            },
+            'en': {
+                'hero-badge': '14 properties available today',
+                'hero-subtitle': 'Exclusive villas, apartments and maisonettes in premium Limassol locations',
+                'happy-clients': 'happy clients',
+                'stat-properties': 'Properties',
+                'stat-avg-price': 'Avg. Price',
+                'stat-villas': 'Villas',
+                'stat-areas': 'Areas',
+                'filters': 'Filters',
+                'add': 'Add',
+                'clear-filters': 'Clear',
+                'results': 'results',
+                'sort-newest': 'Newest first',
+                'sort-price-low': 'Price: Low to High',
+                'sort-price-high': 'Price: High to Low',
+                'sort-size': 'Size (largest)',
+                'contact-agent': 'Contact Agent'
+            }
+        }
+
+        function t(key) {
+            return i18n[currentLang][key] || key
+        }
+
+        function setLanguage(lang) {
+            currentLang = lang
+            
+            // Update toggle UI
+            document.getElementById('lang-el').classList.toggle('bg-white', lang === 'el')
+            document.getElementById('lang-el').classList.toggle('shadow', lang === 'el')
+            document.getElementById('lang-el').classList.toggle('text-slate-700', lang === 'el')
+            
+            document.getElementById('lang-en').classList.toggle('bg-white', lang === 'en')
+            document.getElementById('lang-en').classList.toggle('shadow', lang === 'en')
+            document.getElementById('lang-en').classList.toggle('text-slate-700', lang === 'en')
+            
+            // Update all i18n elements
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n')
+                if (i18n[lang][key]) el.textContent = i18n[lang][key]
+            })
+            
+            // Re-render dynamic content
+            renderTypeFilters()
+            renderBedroomFilters()
+            renderDistrictFilters()
+            applyFilters()
+            
+            // Update map popups if visible
+            if (map) updateMapMarkers()
+        }
+
+        // ============ FILTERS RENDER ============
+        function renderTypeFilters() {
+            const container = document.getElementById('type-filters')
+            container.innerHTML = ''
+            
+            typeOptions.forEach(type => {
+                const display = currentLang === 'el' ? type : 
+                    (type === 'Βίλα' ? 'Villa' : type === 'Διαμέρισμα' ? 'Apartment' : 'Maisonette')
+                
+                const btn = document.createElement('button')
+                btn.className = `filter-chip px-4 py-1.5 text-xs rounded-2xl border transition-colors ${currentFilters.types.includes(type) ? 'active bg-slate-900 text-white border-slate-900' : 'bg-white border-slate-300 hover:bg-slate-50'}`
+                btn.textContent = display
+                btn.onclick = () => {
+                    if (currentFilters.types.includes(type)) {
+                        currentFilters.types = currentFilters.types.filter(t => t !== type)
+                    } else {
+                        currentFilters.types.push(type)
+                    }
+                    applyFilters()
+                    renderTypeFilters()
+                }
+                container.appendChild(btn)
+            })
+        }
+
+        function renderBedroomFilters() {
+            const container = document.getElementById('bedroom-filters')
+            container.innerHTML = ''
+            
+            const options = [1, 2, 3, 4]
+            options.forEach(num => {
+                const btn = document.createElement('button')
+                const isActive = currentFilters.minBeds === num
+                
+                btn.className = `px-3.5 py-1 text-xs rounded-2xl border font-medium transition-colors ${isActive ? 'bg-slate-900 text-white border-slate-900' : 'bg-white border-slate-300 hover:bg-slate-50'}`
+                btn.textContent = `${num}+`
+                btn.onclick = () => {
+                    currentFilters.minBeds = (currentFilters.minBeds === num) ? 0 : num
+                    applyFilters()
+                    renderBedroomFilters()
+                }
+                container.appendChild(btn)
+            })
+        }
+
+        function renderDistrictFilters() {
+            const container = document.getElementById('district-filters')
+            container.innerHTML = ''
+            
+            districtOptions.forEach(district => {
+                const display = currentLang === 'el' ? district : 
+                    (district === 'Γερμασόγεια' ? 'Germasogeia' :
+                     district === 'Άγιος Αθανάσιος' ? 'Agios Athanasios' :
+                     district === 'Μαρίνα Λεμεσού' ? 'Limassol Marina' :
+                     district === 'Ζακάκι' ? 'Zakaki' :
+                     district === 'Μέσα Γειτονιά' ? 'Mesa Geitonia' :
+                     district === 'Κέντρο Λεμεσού' ? 'City Centre' : 'Agios Tychonas')
+                
+                const btn = document.createElement('button')
+                btn.className = `filter-chip px-3 py-1 text-xs rounded-2xl border transition-colors ${currentFilters.districts.includes(district) ? 'active bg-slate-900 text-white border-slate-900' : 'bg-white border-slate-300 hover:bg-slate-50'}`
+                btn.textContent = display
+                btn.onclick = () => {
+                    if (currentFilters.districts.includes(district)) {
+                        currentFilters.districts = currentFilters.districts.filter(d => d !== district)
+                    } else {
+                        currentFilters.districts.push(district)
+                    }
+                    applyFilters()
+                    renderDistrictFilters()
+                }
+                container.appendChild(btn)
+            })
+        }
+
+        // ============ FILTER LOGIC ============
+        function applyFilters() {
+            const search = document.getElementById('search-input').value.toLowerCase().trim()
+            const sortMode = document.getElementById('sort-select').value
+            
+            currentFilters.search = search
+            currentFilters.minPrice = parseInt(document.getElementById('price-min').value) || 0
+            currentFilters.maxPrice = parseInt(document.getElementById('price-max').value) || 99999999
+            currentFilters.minSize = parseInt(document.getElementById('size-min').value) || 0
+            currentFilters.maxSize = parseInt(document.getElementById('size-max').value) || 99999
+            
+            let filtered = properties.filter(p => {
+                // Search
+                const titleMatch = p.title[currentLang].toLowerCase().includes(search) || 
+                                  p.description[currentLang].toLowerCase().includes(search)
+                if (search && !titleMatch) return false
+                
+                // Price
+                if (p.price < currentFilters.minPrice || p.price > currentFilters.maxPrice) return false
+                
+                // Size
+                if (p.size < currentFilters.minSize || p.size > currentFilters.maxSize) return false
+                
+                // Type
+                if (currentFilters.types.length > 0 && !currentFilters.types.includes(p.type.el)) return false
+                
+                // District
+                if (currentFilters.districts.length > 0 && !currentFilters.districts.includes(p.area.el)) return false
+                
+                // Bedrooms
+                if (currentFilters.minBeds > 0 && p.bedrooms < currentFilters.minBeds) return false
+                
+                return true
+            })
+            
+            // Sorting
+            if (sortMode === 'price-low') {
+                filtered.sort((a, b) => a.price - b.price)
+            } else if (sortMode === 'price-high') {
+                filtered.sort((a, b) => b.price - a.price)
+            } else if (sortMode === 'size') {
+                filtered.sort((a, b) => b.size - a.size)
+            } else {
+                // newest first (by id descending as proxy)
+                filtered.sort((a, b) => b.id - a.id)
+            }
+            
+            filteredPropertiesCache = filtered
+            renderListings(filtered)
+            updateStats(filtered)
+            updateMapMarkers()
+        }
+
+        function clearAllFilters() {
+            // Reset filter state
+            currentFilters = {
+                search: '',
+                types: [],
+                districts: [],
+                minPrice: 100000,
+                maxPrice: 2800000,
+                minSize: 40,
+                maxSize: 450,
+                minBeds: 0
+            }
+            
+            // Reset inputs
+            document.getElementById('search-input').value = ''
+            document.getElementById('price-min').value = '100000'
+            document.getElementById('price-max').value = '2800000'
+            document.getElementById('size-min').value = '40'
+            document.getElementById('size-max').value = '450'
+            document.getElementById('sort-select').value = 'newest'
+            
+            // Re-render filter chips
+            renderTypeFilters()
+            renderBedroomFilters()
+            renderDistrictFilters()
+            
+            applyFilters()
+        }
+
+        // ============ RENDER LISTINGS ============
+        function renderListings(filtered) {
+            const grid = document.getElementById('listings-grid')
+            const noResults = document.getElementById('no-results')
+            
+            grid.innerHTML = ''
+            
+            if (filtered.length === 0) {
+                grid.classList.add('hidden')
+                noResults.classList.remove('hidden')
+                return
+            }
+            
+            grid.classList.remove('hidden')
+            noResults.classList.add('hidden')
+            
+            filtered.forEach(prop => {
+                const title = prop.title[currentLang]
+                const area = prop.area[currentLang]
+                const typeLabel = prop.type[currentLang]
+                
+                const card = document.createElement('div')
+                card.className = `property-card group bg-white border border-slate-200 rounded-3xl overflow-hidden cursor-pointer flex flex-col`
+                card.onclick = () => showPropertyModal(prop.id)
+                
+                card.innerHTML = `
+                    <div class="relative h-48 overflow-hidden bg-slate-100">
+                        <img src="${prop.image}" class="property-image w-full h-full object-cover" alt="${title}">
+                        
+                        <div class="absolute top-3 right-3 price-tag px-3.5 py-1 text-sm font-bold rounded-2xl shadow">
+                            €${(prop.price / 1000).toFixed(0)}k
+                        </div>
+                        
+                        <div class="absolute top-3 left-3 bg-white/95 px-3 py-0.5 text-xs font-bold tracking-wider rounded-2xl shadow flex items-center">
+                            ${typeLabel}
+                        </div>
+                    </div>
+                    
+                    <div class="p-4 flex-1 flex flex-col">
+                        <div class="font-semibold leading-tight text-[15px] mb-1 line-clamp-2">${title}</div>
+                        <div class="flex items-center gap-x-1 text-sm text-slate-600 mb-3">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314-11.314z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                            <span>${area}</span>
+                        </div>
+                        
+                        <div class="mt-auto pt-3 border-t flex items-center justify-between text-sm">
+                            <div class="flex items-center gap-x-3 text-slate-700">
+                                <div class="flex items-center gap-x-1">
+                                    <span>🛏️</span>
+                                    <span class="font-semibold">${prop.bedrooms}</span>
+                                </div>
+                                <div class="flex items-center gap-x-1">
+                                    <span>🛁</span>
+                                    <span class="font-semibold">${prop.bathrooms}</span>
+                                </div>
+                                <div>
+                                    <span class="font-semibold">${prop.size}</span>
+                                    <span class="text-xs text-slate-500">m²</span>
+                                </div>
+                            </div>
+                            
+                            <div class="text-emerald-600 text-xs font-bold group-hover:underline">Λεπτομέρειες →</div>
+                        </div>
+                    </div>
+                `
+                grid.appendChild(card)
+            })
+            
+            // Update count
+            document.getElementById('results-count').textContent = filtered.length
+        }
+
+        function updateStats(filtered) {
+            // Update header stats based on current filtered set or full
+            const totalEl = document.getElementById('stat-total')
+            const avgEl = document.getElementById('stat-avg-price')
+            const villasEl = document.getElementById('stat-villas')
+            
+            const dataToUse = filtered.length ? filtered : properties
+            
+            totalEl.textContent = dataToUse.length
+            
+            const avg = Math.round(dataToUse.reduce((sum, p) => sum + p.price, 0) / dataToUse.length / 1000)
+            avgEl.textContent = `€${avg}k`
+            
+            const villas = dataToUse.filter(p => p.type.el === 'Βίλα').length
+            villasEl.textContent = villas
+        }
+
+        // ============ MAP ============
+        function initMap() {
+            if (map) return
+            
+            map = L.map('map', { 
+                zoomControl: true,
+                attributionControl: false 
+            }).setView([34.707, 33.05], 12)
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                className: 'map-tiles'
+            }).addTo(map)
+            
+            markersLayer = L.layerGroup().addTo(map)
+            
+            // Initial markers
+            setTimeout(() => {
+                updateMapMarkers()
+                map.invalidateSize()
+            }, 300)
+        }
+        
+        function updateMapMarkers() {
+            if (!map || !markersLayer) return
+            
+            markersLayer.clearLayers()
+            
+            const toShow = filteredPropertiesCache.length ? filteredPropertiesCache : properties
+            
+            toShow.forEach(prop => {
+                const title = prop.title[currentLang]
+                const price = `€${(prop.price / 1000).toFixed(0)}k`
+                
+                const marker = L.marker([prop.lat, prop.lng], {
+                    icon: L.divIcon({
+                        className: 'custom-marker',
+                        html: `<div style="background:#0f172a;color:white;border-radius:9999px;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,.3);">${(prop.price/1000000).toFixed(1)}M</div>`,
+                        iconSize: [26, 26],
+                        iconAnchor: [13, 13]
+                    })
+                })
+                
+                const popupContent = `
+                    <div style="min-width:180px">
+                        <div style="font-weight:700;line-height:1.15;margin-bottom:3px">${title}</div>
+                        <div style="font-size:13px;color:#64748b;margin-bottom:6px">${prop.area[currentLang]}</div>
+                        <div style="font-size:15px;font-weight:700;color:#0f172a;margin-bottom:8px">${price}</div>
+                        <button onclick="showPropertyModal(${prop.id}); document.querySelector('.leaflet-popup').remove()" 
+                                style="background:#0f172a;color:white;border:none;padding:4px 14px;border-radius:999px;font-size:12px;font-weight:600;cursor:pointer">
+                            View Details
+                        </button>
+                    </div>
+                `
+                
+                marker.bindPopup(popupContent, { closeButton: true, offset: [0, -6] })
+                markersLayer.addLayer(marker)
+            })
+        }
+        
+        function fitMapToMarkers() {
+            if (!map || !markersLayer) return
+            
+            const bounds = L.latLngBounds([])
+            const toShow = filteredPropertiesCache.length ? filteredPropertiesCache : properties
+            
+            toShow.forEach(p => bounds.extend([p.lat, p.lng]))
+            
+            if (bounds.isValid()) {
+                map.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 })
+            }
+        }
+
+        function showMapView() {
+            document.getElementById('map-section').scrollIntoView({ behavior: 'smooth', block: 'start' })
+            setTimeout(() => {
+                if (map) map.invalidateSize()
+                fitMapToMarkers()
+            }, 650)
+        }
+        
+        function showListingsView() {
+            document.getElementById('listings-grid').scrollIntoView({ behavior: 'smooth' })
+        }
+
+        // ============ MODALS ============
+        let currentPropertyId = null
+        
+        function showPropertyModal(id) {
+            const prop = properties.find(p => p.id === id)
+            if (!prop) return
+            
+            currentPropertyId = id
+            
+            // Image
+            document.getElementById('modal-image').src = prop.image
+            
+            // Price
+            document.getElementById('modal-price').innerHTML = `€${prop.price.toLocaleString('en-US')}`
+            
+            // Title & location
+            document.getElementById('modal-title').textContent = prop.title[currentLang]
+            document.getElementById('modal-location').innerHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314-11.314z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                ${prop.area[currentLang]}
+            `
+            
+            // Badges
+            document.getElementById('modal-type-badge').innerHTML = `
+                <span>${prop.type[currentLang]}</span>
+                <span class="text-emerald-500">•</span> 
+                <span>${prop.year}</span>
+            `
+            
+            // Specs
+            document.getElementById('modal-size').textContent = `${prop.size} m²`
+            document.getElementById('modal-beds').textContent = prop.bedrooms
+            document.getElementById('modal-baths').textContent = prop.bathrooms
+            document.getElementById('modal-year').textContent = prop.year
+            
+            // Description
+            document.getElementById('modal-description').textContent = prop.description[currentLang]
+            
+            // Features
+            const featContainer = document.getElementById('modal-features')
+            featContainer.innerHTML = ''
+            prop.features.forEach(f => {
+                const span = document.createElement('span')
+                span.className = `px-3 py-1 text-xs bg-slate-100 text-slate-700 rounded-2xl`
+                span.textContent = f
+                featContainer.appendChild(span)
+            })
+            
+            // Show modal
+            document.getElementById('detail-modal').classList.remove('hidden')
+            document.getElementById('detail-modal').classList.add('flex')
+        }
+        
+        function hideDetailModal() {
+            const modal = document.getElementById('detail-modal')
+            modal.classList.remove('flex')
+            modal.classList.add('hidden')
+        }
+        
+        function showAddPropertyModal() {
+            // Populate district select
+            const districtSelect = document.getElementById('add-district')
+            districtSelect.innerHTML = ''
+            
+            districtOptions.forEach(d => {
+                const opt = document.createElement('option')
+                opt.value = d
+                opt.textContent = currentLang === 'el' ? d : d.replace('Γερμασόγεια','Germasogeia').replace('Άγιος Αθανάσιος','Agios Athanasios').replace('Μαρίνα Λεμεσού','Limassol Marina').replace('Ζακάκι','Zakaki').replace('Μέσα Γειτονιά','Mesa Geitonia').replace('Κέντρο Λεμεσού','City Centre').replace('Άγιος Τύχωνας','Agios Tychonas')
+                districtSelect.appendChild(opt)
+            })
+            
+            document.getElementById('add-modal').classList.remove('hidden')
+            document.getElementById('add-modal').classList.add('flex')
+        }
+        
+        function hideAddModal() {
+            const modal = document.getElementById('add-modal')
+            modal.classList.remove('flex')
+            modal.classList.add('hidden')
+        }
+        
+        function addNewProperty() {
+            const newProp = {
+                id: Math.max(...properties.map(p => p.id)) + 1,
+                title: {
+                    el: document.getElementById('add-title-el').value || "Νέο Ακίνητο",
+                    en: document.getElementById('add-title-en').value || "New Property"
+                },
+                area: {
+                    el: document.getElementById('add-district').value,
+                    en: document.getElementById('add-district').value.replace('Γερμασόγεια','Germasogeia').replace('Άγιος Αθανάσιος','Agios Athanasios').replace('Μαρίνα Λεμεσού','Limassol Marina').replace('Ζακάκι','Zakaki').replace('Μέσα Γειτονιά','Mesa Geitonia').replace('Κέντρο Λεμεσού','City Centre').replace('Άγιος Τύχωνας','Agios Tychonas')
+                },
+                type: (() => {
+                    const t = document.getElementById('add-type').value
+                    return {
+                        el: t === 'Villa' ? 'Βίλα' : t === 'Apartment' ? 'Διαμέρισμα' : 'Μεζονέτα',
+                        en: t
+                    }
+                })(),
+                price: parseInt(document.getElementById('add-price').value) || 350000,
+                size: parseInt(document.getElementById('add-size').value) || 90,
+                bedrooms: parseInt(document.getElementById('add-beds').value),
+                bathrooms: parseInt(document.getElementById('add-baths').value),
+                year: parseInt(document.getElementById('add-year').value) || 2023,
+                lat: 34.707 + (Math.random() - 0.5) * 0.06,
+                lng: 33.05 + (Math.random() - 0.5) * 0.1,
+                image: "https://picsum.photos/id/160/800/600",
+                description: {
+                    el: document.getElementById('add-desc-el').value || "Νέο ακίνητο στη Λεμεσό.",
+                    en: document.getElementById('add-desc-en').value || "New property in Limassol."
+                },
+                features: ["New", "Great Location"]
+            }
+            
+            properties.unshift(newProp) // Add to top
+            hideAddModal()
+            
+            // Refresh UI
+            renderTypeFilters()
+            applyFilters()
+            
+            showToast(currentLang === 'el' ? "Το ακίνητο προστέθηκε επιτυχώς!" : "Property added successfully!", "success")
+            
+            // Show on map
+            setTimeout(() => {
+                document.getElementById('map-section').scrollIntoView({ behavior: 'smooth' })
+                if (map) {
+                    map.invalidateSize()
+                    setTimeout(() => fitMapToMarkers(), 800)
+                }
+            }, 1200)
+        }
+        
+        // ============ ACTIONS ============
+        function contactAgent() {
+            hideDetailModal()
+            const prop = properties.find(p => p.id === currentPropertyId)
+            showToast(currentLang === 'el' ? 
+                `Ευχαριστούμε! Ο μεσίτης θα επικοινωνήσει μαζί σας για το ακίνητο #${currentPropertyId}.` : 
+                `Thank you! An agent will contact you shortly about property #${currentPropertyId}.`, "success")
+        }
+        
+        function bookViewing() {
+            hideDetailModal()
+            showToast(currentLang === 'el' ? 
+                "Το αίτημα για ραντεβού καταχωρήθηκε. Θα σας καλέσουμε σύντομα." : 
+                "Viewing request submitted. We will call you shortly.", "success")
+        }
+        
+        function showToast(message, type = "success") {
+            const container = document.getElementById('toast-container')
+            
+            const toast = document.createElement('div')
+            toast.className = `custom-toast px-5 py-3 rounded-2xl shadow-xl text-sm flex items-start gap-x-3 max-w-xs ${type === 'success' ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-white'}`
+            toast.innerHTML = `
+                <div class="mt-0.5">${type === 'success' ? '✓' : 'ℹ'}</div>
+                <div>${message}</div>
+            `
+            
+            container.appendChild(toast)
+            
+            setTimeout(() => {
+                toast.style.transition = 'all .25s ease'
+                toast.style.opacity = '0'
+                setTimeout(() => toast.remove(), 200)
+            }, 3200)
+        }
+
+        // ============ INIT ============
+        function initializeApp() {
+            // Tailwind script config
+            const style = document.createElement('style')
+            style.textContent = `
+                .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+            `
+            document.head.appendChild(style)
+            
+            // Seed initial filter inputs
+            document.getElementById('price-min').value = '100000'
+            document.getElementById('price-max').value = '2800000'
+            document.getElementById('size-min').value = '40'
+            document.getElementById('size-max').value = '450'
+            
+            // Render filter UI
+            renderTypeFilters()
+            renderBedroomFilters()
+            renderDistrictFilters()
+            
+            // Initial render
+            filteredPropertiesCache = [...properties]
+            renderListings(properties)
+            updateStats(properties)
+            
+            // Language default
+            document.getElementById('lang-el').classList.add('bg-white', 'shadow', 'text-slate-700')
+            
+            // Map
+            initMap()
+            
+            // Keyboard support
+            document.addEventListener('keydown', function(e) {
+                if (e.key === '/' && document.activeElement.tagName === 'BODY') {
+                    e.preventDefault()
+                    document.getElementById('search-input').focus()
+                }
+                if (e.key === 'Escape') {
+                    const detail = document.getElementById('detail-modal')
+                    const add = document.getElementById('add-modal')
+                    if (!detail.classList.contains('hidden')) hideDetailModal()
+                    else if (!add.classList.contains('hidden')) hideAddModal()
+                }
+            })
+            
+            // Demo tip
+            setTimeout(() => {
+                const hasInteracted = localStorage.getItem('limassol-demo-interacted')
+                if (!hasInteracted) {
+                    // Subtle hint only once
+                }
+            }, 9000)
+            
+            // Make sure map is sized correctly after everything
+            setTimeout(() => {
+                if (map) map.invalidateSize()
+            }, 1400)
+            
+            // Final welcome toast (subtle)
+            console.log('%c[Limassol Real Estate] Demo ready. Bilingual, fully interactive.', 'color:#64748b')
+        }
+        
+        // Boot
+        window.onload = initializeApp
+    </script>
+</body>
+</html>
